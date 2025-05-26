@@ -138,7 +138,7 @@ def price_conversion(price: str) -> str:
 def divide(lst: list, n: int):
     """Разделить список lst на части по n элементов"""
     for i in range(0, len(lst), n):
-        yield lst[i : i + n]
+        yield lst[i: i + n]
 
 
 async def upload_prices(watch_remnants, client_id, seller_token):
