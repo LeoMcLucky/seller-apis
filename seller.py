@@ -12,7 +12,23 @@ logger = logging.getLogger(__file__)
 
 
 def get_product_list(last_id, client_id, seller_token):
-    """Получить список товаров магазина озон"""
+    """Получает список товаров из маркетплейса OZON.
+
+    Функция делает POST запрос к API OZON, для получения списка товаров.
+    Список начинается с указанного last_id товара.
+    За один раз скачивает не более 1000 товаров.
+
+    Args:
+        last_id (str): Параметр обозначает последний товар.
+        client_id (str): Ваш индивидуальный id с OZON.
+        seller_token (str): Ваш индивидуальный токен с OZON.
+
+    Returns:
+        dict: Словарь полученный с OZON API.
+
+    Raises:
+        requests.HTTPError: Если в запросе произошла ошибка.
+    """
     url = "https://api-seller.ozon.ru/v2/product/list"
     headers = {
         "Client-Id": client_id,
@@ -32,7 +48,24 @@ def get_product_list(last_id, client_id, seller_token):
 
 
 def get_offer_ids(client_id, seller_token):
-    """Получить артикулы товаров магазина озон"""
+    """Получить артикулы товаров магазина OZON.
+
+    Функция вызывает get_product_list и получает словарь
+    с списком товаров из OZON по 1000 шт за раз.
+    Затем извлекает артикулы товаров из ранее полученного словаря.
+    По итогу создает список артикулов товаров с OZON.
+
+    Args:
+        client_id (str): Ваш индивидуальный id с OZON
+        seller_token (str): Ваш индивидуальный токен с OZON.
+
+    Returns:
+        list: Список артикулов товаров.
+
+    Raises:
+        requests.HTTPError: Если в запросе к API произошла ошибка.
+        KeyError: Если в словаре отсутствуют ожидаемые ключи.
+    """
     last_id = ""
     product_list = []
     while True:
@@ -49,7 +82,22 @@ def get_offer_ids(client_id, seller_token):
 
 
 def update_price(prices: list, client_id, seller_token):
-    """Обновить цены товаров"""
+    """Обновить цены товаров на OZON.
+
+    Функция с помощью POST запроса к OZON API обновляет цены
+    в полученном списке товаров и возвращает словарь списков.
+
+    Args:
+        prices: Список с ценами на товар.
+        client_id (str): Ваш индивидуальный id с OZON.
+        seller_token (str): Ваш индивидуальный токен с OZON.
+
+    Returns:
+        dict: Словарь с обновленным списком цен товаров.
+
+    Raises:
+        requests.HTTPError: Если в запросе к API произошла ошибка.
+    """
     url = "https://api-seller.ozon.ru/v1/product/import/prices"
     headers = {
         "Client-Id": client_id,
@@ -62,7 +110,22 @@ def update_price(prices: list, client_id, seller_token):
 
 
 def update_stocks(stocks: list, client_id, seller_token):
-    """Обновить остатки"""
+    """Обновить остатки товаров на OZON.
+
+    Функция с помощью POST запроса к API OZON обновляет информацию
+    о количестве товара.
+
+    Args:
+        stocks: Список с информацией об остатках товара.
+        client_id (str): Ваш индивидуальный id с OZON.
+        seller_token (str): Ваш индивидуальный токен с OZON.
+
+    Returns:
+        dict: Словарь с обновленным списком остатков товаров.
+
+    Raises:
+        requests.HTTPError: Если в запросе к API произошла ошибка.
+    """
     url = "https://api-seller.ozon.ru/v1/product/import/stocks"
     headers = {
         "Client-Id": client_id,
@@ -75,7 +138,20 @@ def update_stocks(stocks: list, client_id, seller_token):
 
 
 def download_stock():
-    """Скачать файл ostatki с сайта casio"""
+    """Скачивает файл ostatki с сайта timeworld.ru.
+
+    Функция с помощью GET запроса к API timeworld.ru
+    скачивает информацию об остатках товара архив ostatki.zip.
+    Извлекает из архива exel файл ostatki.xls и берёт из него данные
+    создавая список словарей с информацией об остатках товара.
+    После удаляет уже не нужный ostatki.xls.
+
+    Returns:
+        list[dict]: Список словарей с информацией об остатках товара.
+
+    Raises:
+        requests.HTTPError: Если в запросе к API произошла ошибка.
+    """
     # Скачать остатки с сайта
     casio_url = "https://timeworld.ru/upload/files/ostatki.zip"
     session = requests.Session()
@@ -96,6 +172,25 @@ def download_stock():
 
 
 def create_stocks(watch_remnants, offer_ids):
+    """Создаёт список остатков товара.
+
+    Функция обрабатывает данные обоих списков и сравнивает их между собой
+    по артикулам создавая новый список словарей.
+    Изменяет количество товара опираясь на данные из списка watch_remnants.
+    Если в списках нет совпадений то такому товару присваивается остаток - 0.
+
+    Args:
+        watch_remnants list[dict]: Список словарей
+        с информацией об остатках товара с timeworld.ru.
+        offer_ids list: Список артикулов товаров с OZON.
+
+    Returns:
+        list[dict]: Общий список словарей с информацией об остатках товаров
+        с timeworld.ru и OZON.
+
+    Raises:
+        ValueError: Если количество не удалось преобразовать в число.
+    """
     # Уберем то, что не загружено в seller
     stocks = []
     for watch in watch_remnants:
@@ -116,6 +211,24 @@ def create_stocks(watch_remnants, offer_ids):
 
 
 def create_prices(watch_remnants, offer_ids):
+    """Создаёт новый список с актуальными ценами на товары.
+
+    Функция перебирает товары в из списка watch_remnants
+    и сравнивает по id с товарами в списке offer_ids.
+    Если id совпадают, то товар отправляется в новый список словарей
+    с обновленной ценой взятой из первого списка.
+
+    Args:
+        watch_remnants list[dict]: Список словарей
+        с информацией об остатках товара с timeworld.ru.
+        offer_ids list: Список артикулов товаров с OZON.
+
+    Returns:
+        list[dict]: Список словарей с актуальной ценой на товары.
+
+    Raises:
+        KeyError: Если в словаре отсутствуют ожидаемые ключи.
+    """
     prices = []
     for watch in watch_remnants:
         if str(watch.get("Код")) in offer_ids:
@@ -131,17 +244,50 @@ def create_prices(watch_remnants, offer_ids):
 
 
 def price_conversion(price: str) -> str:
-    """Преобразовать цену. Пример: 5'990.00 руб. -> 5990"""
+    """Преобразовывает цену в целое число.
+
+    Args:
+        price: Цена товара.
+
+    Returns:
+        Возвращает целое число в формате строки без посторонних символов.
+
+    Raises:
+        AttributeError: Если будем передавать не строку
+
+    Exemples:
+        >>>a = "5'990.00 руб"
+        >>>print(price_conversion(a)
+        '5990'
+    """
     return re.sub("[^0-9]", "", price.split(".")[0])
 
 
 def divide(lst: list, n: int):
-    """Разделить список lst на части по n элементов"""
+    """Разделяет список lst на списки по n элементов.
+
+    Args:
+        lst: Список остатков товара.
+        n: Количество элементов.
+
+    Yields:
+        int: По n количеству будет разделен список.
+
+    Raises:
+        AttributeError: Если будем передавать не строку
+
+    Exemples:
+        >>>a = [1, 2, 3, 4, 5]
+        >>>b = 2
+        >>>print(list(divide(a, b)))
+        [[1, 2], [3, 4], [5]]
+    """
     for i in range(0, len(lst), n):
         yield lst[i: i + n]
 
 
 async def upload_prices(watch_remnants, client_id, seller_token):
+    """Обновляет цены товаров на OZON."""
     offer_ids = get_offer_ids(client_id, seller_token)
     prices = create_prices(watch_remnants, offer_ids)
     for some_price in list(divide(prices, 1000)):
@@ -150,6 +296,7 @@ async def upload_prices(watch_remnants, client_id, seller_token):
 
 
 async def upload_stocks(watch_remnants, client_id, seller_token):
+    """Обновляет остатки товаров на OZON."""
     offer_ids = get_offer_ids(client_id, seller_token)
     stocks = create_stocks(watch_remnants, offer_ids)
     for some_stock in list(divide(stocks, 100)):
@@ -159,6 +306,18 @@ async def upload_stocks(watch_remnants, client_id, seller_token):
 
 
 def main():
+    """
+    Основная функция для обновления остатков и цен товаров в OZON.
+
+    Функция получает переменные окружения `SELLER_TOKEN` и `CLIENT_ID`.
+    Загружает артикулы товаров из OZON, а также остатки и цены из timeworld.ru.
+    Формирует и отправляет обновлённые остатки и цены через API OZON.
+
+    Raises:
+        requests.exceptions.ReadTimeout: Превышено время ожидания сервера.
+        requests.exceptions.ConnectionError: Ошибка соединения.
+        Exception: ERROR_2.
+    """
     env = Env()
     seller_token = env.str("SELLER_TOKEN")
     client_id = env.str("CLIENT_ID")
