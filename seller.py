@@ -14,7 +14,7 @@ logger = logging.getLogger(__file__)
 def get_product_list(last_id, client_id, seller_token):
     """Получает список товаров из маркетплейса OZON.
 
-    Функция делает POST запрос к API OZON, для получения списка товаров.
+    Функция делает POST метод к API OZON, для получения списка товаров.
     Список начинается с указанного last_id товара.
     За один раз скачивает не более 1000 товаров.
 
@@ -24,7 +24,7 @@ def get_product_list(last_id, client_id, seller_token):
         seller_token (str): Ваш индивидуальный токен с OZON.
 
     Returns:
-        dict: Словарь полученный с OZON API.
+        dict: Словарь с списком товаров полученный с OZON API.
 
     Raises:
         requests.HTTPError: Если в запросе произошла ошибка.
@@ -56,7 +56,7 @@ def get_offer_ids(client_id, seller_token):
     По итогу создает список артикулов товаров с OZON.
 
     Args:
-        client_id (str): Ваш индивидуальный id с OZON
+        client_id (str): Ваш индивидуальный id с OZON.
         seller_token (str): Ваш индивидуальный токен с OZON.
 
     Returns:
@@ -84,7 +84,7 @@ def get_offer_ids(client_id, seller_token):
 def update_price(prices: list, client_id, seller_token):
     """Обновить цены товаров на OZON.
 
-    Функция с помощью POST запроса к OZON API обновляет цены
+    Функция с помощью POST метода к OZON API обновляет цены
     в полученном списке товаров и возвращает словарь списков.
 
     Args:
@@ -93,7 +93,7 @@ def update_price(prices: list, client_id, seller_token):
         seller_token (str): Ваш индивидуальный токен с OZON.
 
     Returns:
-        dict: Словарь с обновленным списком цен товаров.
+        dict: Словарь с информацией о статусе обновления цен.
 
     Raises:
         requests.HTTPError: Если в запросе к API произошла ошибка.
@@ -112,7 +112,7 @@ def update_price(prices: list, client_id, seller_token):
 def update_stocks(stocks: list, client_id, seller_token):
     """Обновить остатки товаров на OZON.
 
-    Функция с помощью POST запроса к API OZON обновляет информацию
+    Функция с помощью POST метода к API OZON обновляет информацию
     о количестве товара.
 
     Args:
@@ -177,10 +177,13 @@ def create_stocks(watch_remnants, offer_ids):
     Функция обрабатывает данные обоих списков и сравнивает их между собой
     по артикулам создавая новый список словарей.
     Изменяет количество товара опираясь на данные из списка watch_remnants.
+    Товаров >10 = 100шт.
+    Товар 1 = 0.
+    Либо = реальное количество товара.
     Если в списках нет совпадений то такому товару присваивается остаток - 0.
 
     Args:
-        watch_remnants list[dict]: Список словарей
+        watch_remnants list[dict]: Список словарей.
         с информацией об остатках товара с timeworld.ru.
         offer_ids list: Список артикулов товаров с OZON.
 
@@ -190,6 +193,7 @@ def create_stocks(watch_remnants, offer_ids):
 
     Raises:
         ValueError: Если количество не удалось преобразовать в число.
+        KeyError: Если в словаре отсутствуют ожидаемые ключи.
     """
     # Уберем то, что не загружено в seller
     stocks = []
@@ -219,7 +223,7 @@ def create_prices(watch_remnants, offer_ids):
     с обновленной ценой взятой из первого списка.
 
     Args:
-        watch_remnants list[dict]: Список словарей
+        watch_remnants list[dict]: Список словарей.
         с информацией об остатках товара с timeworld.ru.
         offer_ids list: Список артикулов товаров с OZON.
 
@@ -253,7 +257,7 @@ def price_conversion(price: str) -> str:
         Возвращает целое число в формате строки без посторонних символов.
 
     Raises:
-        AttributeError: Если будем передавать не строку
+        AttributeError: Если будем передавать не строку.
 
     Exemples:
         >>>a = "5'990.00 руб"
@@ -274,7 +278,7 @@ def divide(lst: list, n: int):
         int: По n количеству будет разделен список.
 
     Raises:
-        AttributeError: Если будем передавать не строку
+        AttributeError: Если будем передавать не список
 
     Exemples:
         >>>a = [1, 2, 3, 4, 5]
@@ -287,7 +291,22 @@ def divide(lst: list, n: int):
 
 
 async def upload_prices(watch_remnants, client_id, seller_token):
-    """Обновляет цены товаров на OZON."""
+    """Обновляет цены товаров на OZON.
+
+    Args:
+        watch_remnants list[dict]: Список словарей с информацией об остатках товара с timeworld.ru.
+        client_id (str): Ваш индивидуальный id с OZON.
+        seller_token (str): Ваш индивидуальный токен с OZON.
+
+    Returns:
+        list[dict]: Список словарей с актуальной ценой на товары.
+
+    Raises:
+        requests.HTTPError: Если в запросе к API произошла ошибка.
+        KeyError: Если в словаре отсутствуют ожидаемые ключи.
+        KeyError: Если в словаре отсутствуют ожидаемые ключи.
+        requests.HTTPError: Если в запросе к API произошла ошибка.
+    """
     offer_ids = get_offer_ids(client_id, seller_token)
     prices = create_prices(watch_remnants, offer_ids)
     for some_price in list(divide(prices, 1000)):
@@ -296,7 +315,23 @@ async def upload_prices(watch_remnants, client_id, seller_token):
 
 
 async def upload_stocks(watch_remnants, client_id, seller_token):
-    """Обновляет остатки товаров на OZON."""
+    """Обновляет остатки товаров на OZON.
+
+    Args:
+        watch_remnants list[dict]: Список словарей с информацией об остатках товара с timeworld.ru.
+        client_id (str): Ваш индивидуальный id с OZON.
+        seller_token (str): Ваш индивидуальный токен с OZON.
+
+    Returns:
+        stocks list[dict]: Общий список словарей с информацией об остатках товаров
+        с timeworld.ru и OZON.
+        not_empty list: Cписок товаров с остатком > 0
+
+    Raises:
+        requests.HTTPError: Если в запросе к API произошла ошибка.
+        ValueError: Если количество не удалось преобразовать в число.
+        KeyError: Если в словаре отсутствуют ожидаемые ключи.
+    """
     offer_ids = get_offer_ids(client_id, seller_token)
     stocks = create_stocks(watch_remnants, offer_ids)
     for some_stock in list(divide(stocks, 100)):
@@ -309,7 +344,7 @@ def main():
     """
     Основная функция для обновления остатков и цен товаров в OZON.
 
-    Функция получает переменные окружения `SELLER_TOKEN` и `CLIENT_ID`.
+    Функция получает переменные окружения SELLER_TOKEN и CLIENT_ID.
     Загружает артикулы товаров из OZON, а также остатки и цены из timeworld.ru.
     Формирует и отправляет обновлённые остатки и цены через API OZON.
 
